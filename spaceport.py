@@ -5,6 +5,7 @@ import os
 
 pygame.init()
 
+music = True
 aspect_ratio = 1.78
 display_width = 1080
 display_height = int(display_width // aspect_ratio)
@@ -22,7 +23,7 @@ rcs_sound = pygame.mixer.Sound('rcs.ogg')
 
 class Object:
 
-    def __init__(self, sprite, is_player, x_pos, y_pos, x_mov, y_mov):
+    def __init__(self, sprite, is_player, x_pos, y_pos, x_mov, y_mov, rotation_rate):
         self.player = is_player
         self.sprite = sprite
         self.object_img = pygame.image.load(self.sprite)
@@ -30,6 +31,7 @@ class Object:
         self.y = y_pos
         self.x_movement = x_mov
         self.y_movement = y_mov
+        self.rotation_rate = rotation_rate
         self.dimensions()
 
     def object_update(self):
@@ -96,6 +98,13 @@ class Object:
             else:
                 self.y_movement += inc
 
+        if keys[pygame.K_z]:
+            self.rcs('ccw')
+            if self.y_movement > 20:
+                self.y_movement += 0
+            else:
+                self.y_movement += inc
+
     def rcs(self, thrust_dir):
         object_centre = self.object_centre_coords()
         behind = (object_centre[0], object_centre[1] + 15)
@@ -107,14 +116,19 @@ class Object:
         if thrust_dir == 'fwd':
             pygame.draw.rect(game_display, white, (behind[0], behind[1], 2, 7))
 
-        elif thrust_dir == 'aft':
+        if thrust_dir == 'aft':
             pygame.draw.rect(game_display, white, (infront[0], infront[1], 2, 7))
 
-        elif thrust_dir == 'left':
+        if thrust_dir == 'left':
             pygame.draw.rect(game_display, white, (right[0], right[1], 7, 2))
 
-        elif thrust_dir == 'right':
+        if thrust_dir == 'right':
             pygame.draw.rect(game_display, white, (left[0], left[1], 7, 2))
+
+        if thrust_dir == 'ccw':
+            pygame.draw.rect(game_display, white, (behind[0], behind[1], 7, 2))
+            pygame.draw.rect(game_display, white, (infront[0], infront[1], 7, 2))
+            
 
     def dimensions(self):
         self.obj_width, self.obj_height = self.object_img.get_size()
@@ -123,7 +137,7 @@ class Object:
     def object_centre_coords(self):
         x_centre = (self.obj_width / 2) + self.x -1
         y_centre = (self.obj_height / 2) + self.y -1
-        return round(x_centre), round(y_centre)
+        return x_centre, y_centre
 
     def movement(self):
         return (round(self.x_movement, 1), round(self.y_movement, 1))
@@ -168,8 +182,9 @@ def win_message():
     winfont_colour = (255, 0, 0)
     win_text = 'D O C K E D'
     win_display = winfont.render(win_text, 1, winfont_colour)
-
-    bwom_sound.play()
+    rcs_sound.stop()
+    bwom_sound.play(0, 5000)
+    bwom_sound.fadeout(5000)
     text_x_centre = win_display.get_width() / 2
     text_y_centre = win_display.get_height() / 2
     little_timer = time.time() + 5
@@ -188,7 +203,7 @@ def win_conditions(accuracy_margin):
 
     ship_x_coord, ship_y_coord = spaceship.object_centre_coords()
 
-    if ship_x_coord in win_x_range and ship_y_coord in win_y_range and spaceship.movement() == warpgate.movement():
+    if round(ship_x_coord) in win_x_range and round(ship_y_coord) in win_y_range and spaceship.movement() == warpgate.movement():
         docked = True
         level += 1
         return
@@ -215,6 +230,7 @@ def game_loop():
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                level = 0
                 playing = False
                 docked = True
                 return
@@ -228,14 +244,13 @@ def game_loop():
         rcs_sound_stop()
         clock.tick(60)
 
-    rcs_sound_stop()
     win_message()
     return
 
-
-pygame.mixer.music.load('space_music.mp3')
-pygame.mixer.music.set_volume(0.4)
-pygame.mixer.music.play(-1)
+if music == True:
+    pygame.mixer.music.load('space_music.mp3')
+    pygame.mixer.music.set_volume(0.3)
+    pygame.mixer.music.play(-1)
 
 
 level = 1
@@ -248,8 +263,8 @@ def title(level):
 while playing:
     if level == 1:
         title(level)
-        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), 0.0, 0.0)
-        warpgate = Object('warpgate.png', False, 600, 300, -0.0, -0.0)
+        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), 0.0, 0.0, None)
+        warpgate = Object('warpgate.png', False, 600, 300, -0.0, -0.0, None)
         game_loop()
         spaceship = None
         warpgate = None
@@ -257,8 +272,8 @@ while playing:
     elif level == 2:
         title(level)
         docked = False
-        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), -0.3, -1.0)
-        warpgate = Object('warpgate.png', False, 600, 300, -0.3, -1.0)
+        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), -0.3, -1.0, None)
+        warpgate = Object('warpgate.png', False, 600, 300, -0.3, -1.0, None)
         game_loop()
         spaceship = None
         warpgate = None
@@ -266,8 +281,8 @@ while playing:
     elif level == 3:
         title(level)
         docked = False
-        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), -0.7, -1.5)
-        warpgate = Object('warpgate.png', False, 600, 300, -0.9, -0.1)
+        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), -0.7, -1.5, None)
+        warpgate = Object('warpgate.png', False, 600, 300, -0.9, -0.1, None)
         game_loop()
         spaceship = None
         warpgate = None
@@ -275,8 +290,8 @@ while playing:
     elif level == 4:
         title(level)
         docked=False
-        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), 1.0, -1.5)
-        warpgate = Object('warpgate.png', False, 600, 300, -1.7, -2.1)
+        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), 1.0, -1.5, None)
+        warpgate = Object('warpgate.png', False, 600, 300, -1.7, -2.1, None)
         game_loop()
         spaceship = None
         warpgate = None
@@ -284,8 +299,8 @@ while playing:
     elif level == 5:
         title(level)
         docked=False
-        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), 0.0, -2.0)
-        warpgate = Object('warpgate.png', False, 600, 300, 2.7, -3.0)
+        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), 0.0, -2.0, None)
+        warpgate = Object('warpgate.png', False, 600, 300, 2.7, -3.0, None)
         game_loop()
         spaceship = None
         warpgate = None
@@ -293,8 +308,8 @@ while playing:
     elif level == 6:
         title(level)
         docked=False
-        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), -3, -7.0)
-        warpgate = Object('warpgate.png', False, 600, 300, -3, -10.0)
+        spaceship = Object('spaceship.png', True, int(display_width * 0.50), int(display_height * 0.9), -3, -7.0, None)
+        warpgate = Object('warpgate.png', False, 600, 300, -3, -10.0, None)
         game_loop()
         spaceship = None
         warpgate = None
